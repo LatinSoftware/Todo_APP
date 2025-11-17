@@ -13,7 +13,7 @@ PY_BIN="/usr/bin/python3"
 
 # Database info
 DB_USER="postgres"
-DB_PASS="postgress"
+DB_PASS="postgres"
 DB_NAME="todos"
 DB_HOST_WRITE="todo-task-database.cluster-cwviqcw0mghy.us-east-1.rds.amazonaws.com"
 DB_HOST_READ="todo-task-database.cluster-ro-cwviqcw0mghy.us-east-1.rds.amazonaws.com"
