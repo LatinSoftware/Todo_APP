@@ -9,7 +9,7 @@ pipeline {
     environment {
         // Aseguramos que uv esté en el PATH para todos los stages
         PATH = "/root/.local/bin:${env.PATH}"
-        DATABASE_URL = "postgresql://user:password@todo_db-test:5432/todo_db"
+        DATABASE_URL = "postgresql://user:password@tododbtest:5432/todo_db"
     }
 
     stages {
@@ -52,7 +52,7 @@ pipeline {
                         '-e POSTGRES_USER=user ' +
                         '-e POSTGRES_PASSWORD=password ' +
                         '-e POSTGRES_DB=todo_db ' +
-                        '--name todo_db-test' // El host ahora será 'postgres'
+                        '--name tododbtest' // El host ahora será 'postgres'
                     ) { c ->
                         echo 'Esperando a que Postgres esté listo...'
                         // Damos unos segundos para que la DB inicie
