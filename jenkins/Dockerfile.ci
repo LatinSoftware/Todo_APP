@@ -1,29 +1,24 @@
-FROM python:3.12-slim
+FROM python:3.14-slim
 
-# Evitar prompts y configurar entorno
 ENV DEBIAN_FRONTEND=noninteractive \
-    PYTHONDONTWRITEBYTECODE=1
+    UV_CACHE_DIR=/root/.cache/uv
 
-# 1. Instalar dependencias base
+# 1. Dependencias de sistema y Docker CLI
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    curl \
-    ca-certificates \
-    postgresql-client \
-    && rm -rf /var/lib/apt/lists/*
+    curl ca-certificates postgresql-client && \
+    curl -fsSL https://download.docker.com/linux/static/stable/x86_64/docker-24.0.7.tgz | tar xvz && \
+    mv docker/docker /usr/local/bin/ && rm -rf docker && \
+    rm -rf /var/lib/apt/lists/*
 
-# 2. Instalar el CLIENTE de Docker (solo el binario)
-# Esto es más seguro que instalar docker.io completo
-RUN curl -fsSL https://download.docker.com/linux/static/stable/x86_64/docker-24.0.7.tgz | tar xvz && \
-    mv docker/docker /usr/local/bin/ && \
-    rm -rf docker
-
-# 3. Verificar instalación (ahora no fallará)
-RUN docker --version
-
-# 4. Instalar uv (Gestor de paquetes)
+# 2. Instalar uv
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
 
-# 5. Instalar Trivy (Scanner de seguridad)
-RUN curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh -s -- -b /usr/local/bin
-
 WORKDIR /app
+
+# 3. CACHÉ DE DEPENDENCIAS: 
+# Copiamos solo los archivos de dependencias para crear una capa pesada pero fija
+COPY pyproject.toml uv.lock ./
+RUN uv sync --frozen --no-install-project
+
+# 4. Instalar Trivy
+RUN curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh -s -- -b /usr/local/bin
