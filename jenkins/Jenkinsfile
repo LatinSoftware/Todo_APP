@@ -1,0 +1,120 @@
+pipeline {
+    agent {
+        docker {
+            image 'python:3.12-slim'
+            args '-u root -v /var/run/docker.sock:/var/run/docker.sock'
+        }
+    }
+
+    environment {
+        PATH = "/root/.local/bin:${env.PATH}"
+        TEST_NETWORK = "todo-net-${BUILD_NUMBER}"
+        DB_HOST = "tododbtest-${BUILD_NUMBER}"
+        DATABASE_URL = "postgresql://user:password@${DB_HOST}:5432/todo_db"
+        
+        // Configuración DockerHub (Cambia 'tu-usuario' por el real)
+        DOCKER_IMAGE = "kaoru751/todo-app-backend"
+        DOCKER_TAG = "${BUILD_NUMBER}"
+    }
+
+    stages {
+        stage('Checkout') {
+            steps {
+                checkout scm
+            }
+        }
+
+        stage('Setup Environment') {
+            steps {
+                script {
+                    echo 'Instalando herramientas de sistema...'
+                    sh 'apt-get update && apt-get install -y curl docker.io'
+                    // Instalar Trivy (Seguridad)
+                    sh '''
+                    curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh -s -- -b /usr/local/bin
+                    '''
+                    // Instalar uv (Paquetes)
+                    sh 'curl -LsSf https://astral.sh/uv/install.sh | sh'
+                    
+                    sh "docker network create ${TEST_NETWORK}"
+                    def containerId = sh(script: "hostname", returnStdout: true).trim()
+                    sh "docker network connect ${TEST_NETWORK} ${containerId}"
+                }
+            }
+        }
+
+        stage('Quality & Static Analysis') {
+            steps {
+                script {
+                    sh '/root/.local/bin/uv sync'
+                    echo 'Ejecutando Ruff (Linter/Calidad)...'
+                    sh '/root/.local/bin/uv run ruff check .'
+                    echo 'Ejecutando Bandit (Seguridad de Código)...'
+                    sh '/root/.local/bin/uv run bandit -r app/'
+                }
+            }
+        }
+
+        stage('Run Integration Tests') {
+            steps {
+                script {
+                    docker.image('postgres:15-alpine').withRun(
+                        "--network ${env.TEST_NETWORK} --name ${env.DB_HOST} " +
+                        "-e POSTGRES_USER=user -e POSTGRES_PASSWORD=password -e POSTGRES_DB=todo_db"
+                    ) { c ->
+                        sh 'sleep 20' // Esperar a Postgres
+                        sh "DATABASE_URL=${env.DATABASE_URL} /root/.local/bin/uv run pytest"
+                    }
+                }
+            }
+        }
+
+        stage('Build Docker Image') {
+            steps {
+                echo 'Construyendo imagen Docker...'
+                sh "docker build -t ${DOCKER_IMAGE}:${DOCKER_TAG} -t ${DOCKER_IMAGE}:latest ."
+            }
+        }
+
+        stage('Security Scan (Trivy)') {
+            steps {
+                echo 'Escaneando vulnerabilidades en la imagen...'
+                // Escanea la imagen y muestra errores críticos
+                sh "trivy image --severity CRITICAL --exit-code 0 ${DOCKER_IMAGE}:${DOCKER_TAG}"
+            }
+        }
+
+        stage('Push to DockerHub') {
+            when {
+                expression { 
+                    return env.BRANCH_NAME == 'main' || 
+                           env.GIT_BRANCH == 'main' || 
+                           env.GIT_BRANCH == 'origin/main' || 
+                           env.GIT_BRANCH == 'refs/remotes/origin/main'
+                }
+            }
+            steps {
+                script {
+                    docker.withRegistry('https://index.docker.io/v1/', 'dockerhub-cred') {
+                        sh "docker push ${DOCKER_IMAGE}:${DOCKER_TAG}"
+                        sh "docker push ${DOCKER_IMAGE}:latest"
+                    }
+                }
+            }
+        }
+    }
+
+    post {
+        always {
+            script {
+                echo 'Limpiando recursos...'
+                sh "docker rm -f ${env.DB_HOST} || true"
+                def containerId = sh(script: "hostname", returnStdout: true).trim()
+                sh "docker network disconnect ${env.TEST_NETWORK} ${containerId} || true"
+                sh "docker network rm ${env.TEST_NETWORK} || true"
+            }
+        }
+        success { echo 'Pipeline completado con éxito y publicado.' }
+        failure { echo 'El pipeline ha fallado. Revisa los logs.' }
+    }
+}

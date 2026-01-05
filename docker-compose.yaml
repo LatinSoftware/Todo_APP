@@ -1,0 +1,42 @@
+services:
+  db:
+    image: postgres:15-alpine
+    container_name: todo_db
+    restart: always
+    environment:
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: todoapp
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  app:
+    build: .
+    container_name: todo_app
+    restart: always
+    ports:
+      - "8000:8000"
+      - "8080:8000"
+    environment:
+      - DATABASE_URL=postgresql://user:password@db:5432/todoapp
+    depends_on:
+      - db
+  jenkins:
+    build:
+      context: ./jenkins
+    container_name: jenkins
+    restart: always
+    ports:
+      - "8081:8080"
+      - "50000:50000"
+    volumes:
+      - jenkins_home:/var/jenkins_home
+      - /var/run/docker.sock:/var/run/docker.sock
+    depends_on:
+      - db
+
+volumes:
+  postgres_data:
+  jenkins_home:
