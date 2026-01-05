@@ -23,6 +23,20 @@ services:
       - DATABASE_URL=postgresql://user:password@db:5432/todoapp
     depends_on:
       - db
+  jenkins:
+    build:
+      context: ./jenkins
+    container_name: jenkins
+    restart: always
+    ports:
+      - "8081:8080"
+      - "50000:50000"
+    volumes:
+      - jenkins_home:/var/jenkins_home
+      - /var/run/docker.sock:/var/run/docker.sock
+    depends_on:
+      - db
 
 volumes:
   postgres_data:
+  jenkins_home:
