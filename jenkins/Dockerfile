@@ -11,7 +11,9 @@ RUN apt-get update && \
     apt-get install -y docker-ce-cli && \
     rm -rf /var/lib/apt/lists/*
 
-# Add jenkins user to docker group (optional, usually handled by socket permissions)
-# RUN usermod -aG docker jenkins
+# SOLUCIÓN AL ERROR DE PERMISOS:
+# Creamos el grupo docker con el GID estándar (999) y añadimos a jenkins.
+# Nota: Si en tu host 'ls -ln /var/run/docker.sock' muestra un ID distinto a 999, cámbialo aquí.
+RUN groupadd -g 999 docker && usermod -aG docker jenkins
 
 USER jenkins

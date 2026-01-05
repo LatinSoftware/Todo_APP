@@ -100,11 +100,12 @@ pipeline {
     post {
         always {
             script {
-                echo 'Cleaning up resources...'
-                sh "docker rm -f ${env.DB_HOST} || true"
-                def containerId = sh(script: "hostname", returnStdout: true).trim()
-                sh "docker network disconnect ${env.TEST_NETWORK} ${containerId} || true"
-                sh "docker network rm ${env.TEST_NETWORK} || true"
+                node {
+                    echo 'Cleaning up resources...'
+                    sh "docker rm -f ${env.DB_HOST} || true"
+                    // Need to check if network exists before removing to avoid errors if creation failed
+                    sh "docker network rm ${env.TEST_NETWORK} || true"
+                }
             }
         }
     }
