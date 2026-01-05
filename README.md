@@ -1,105 +1,65 @@
 # Todo App (FastAPI + PostgreSQL)
 
-A TODO app using FastAPI with PostgreSQL database and SQLAlchemy ORM.
+A TODO app using FastAPI with PostgreSQL database and SQLAlchemy ORM, organized with best practices.
 
-## Files
+## Project Structure
 
-- `main.py` - FastAPI application with database endpoints
-- `models.py` - SQLAlchemy Todo model
-- `schemas.py` - Pydantic request/response schemas
-- `database.py` - Database connection and session management
-- `requirements.txt` - pip dependencies
-- `environment.yml` - Conda environment file
+```text
+app/
+  api/          # API Routers
+    v1/         # API Version 1
+  core/         # Configuration and Database setup
+  models/       # SQLAlchemy Models
+  schemas/      # Pydantic Schemas
+  main.py       # App Entry point
+Dockerfile      # Docker configuration
+docker-compose.yaml # Docker Orchestration
+```
 
 ## Prerequisites
 
-- PostgreSQL running locally or remotely
-- Python 3.11+
+- Python 3.11+ or Docker & Docker Compose
 
-## Database Setup
+## Quick Start (Docker)
 
-Create a PostgreSQL database and user:
-
-```sql
-CREATE USER todouser WITH PASSWORD 'todopassword';
-CREATE DATABASE todoapp OWNER todouser;
-```
-
-## Environment Setup
-
-Set the database URL (PowerShell):
+The easiest way to run the project is using Docker Compose:
 
 ```powershell
-$env:DATABASE_URL="postgresql://todouser:todopassword@localhost/todoapp"
+docker-compose up --build
 ```
 
-Or create a `.env` file in the project root:
+The API will be available at `http://localhost:8000`.
 
-```
-DATABASE_URL=postgresql://todouser:todopassword@localhost/todoapp
+## Local Development (Manual)
+
+### 1. Environment Setup
+
+Create a `.env` file in the project root:
+
+```text
+DATABASE_URL=postgresql://user:password@localhost/todoapp
 ```
 
-## Create environment & install (Conda)
+### 2. Install Dependencies (using uv)
 
 ```powershell
-conda env create -f environment.yml
-conda activate todo-app
-pip install -r requirements.txt
+uv sync
 ```
 
-## Create environment & install (venv)
+### 3. Run the server
 
 ```powershell
-python -m venv .venv
-.\.venv\Scripts\Activate.ps1
-python -m pip install --upgrade pip
-python -m pip install -r requirements.txt
+uv run fastapi dev app/main.py
 ```
 
-## Run the server
+Then open [http://localhost:8000/docs](http://localhost:8000/docs) for the interactive API docs.
 
-```powershell
-python -m uvicorn main:app --reload --host 127.0.0.1 --port 8000
-```
+## API Endpoints (v1)
 
-Then open http://127.0.0.1:8000/docs for the interactive API docs (Swagger UI).
+All API endpoints are prefixed with `/api/v1`.
 
-## Endpoints
-
-- `GET /todos` - list all todos
-- `POST /todos` - create a todo (JSON body: `title`, optional `description`)
-- `GET /todos/{id}` - get todo by id
-- `PUT /todos/{id}` - update a todo (body: `title`, optional `description`, optional `completed` query)
-- `DELETE /todos/{id}` - delete todo
-
-## Examples (curl/PowerShell)
-
-Create:
-
-```powershell
-curl -X POST "http://127.0.0.1:8000/todos" -H "Content-Type: application/json" -d '{"title": "Buy milk", "description": "2 liters"}'
-```
-
-List all:
-
-```powershell
-curl http://127.0.0.1:8000/todos
-```
-
-Get by ID:
-
-```powershell
-curl http://127.0.0.1:8000/todos/1
-```
-
-Update (partial):
-
-```powershell
-curl -X PUT "http://127.0.0.1:8000/todos/1" -H "Content-Type: application/json" -d '{"completed": true}'
-```
-
-Delete:
-
-```powershell
-curl -X DELETE http://127.0.0.1:8000/todos/1
-```
+- `GET /api/v1/todos` - List all todos
+- `POST /api/v1/todos` - Create a todo
+- `GET /api/v1/todos/{id}` - Get todo by id
+- `PUT /api/v1/todos/{id}` - Update a todo
+- `DELETE /api/v1/todos/{id}` - Delete todo
