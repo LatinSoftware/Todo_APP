@@ -51,8 +51,8 @@ pipeline {
                     docker.image('postgres:15-alpine').withRun(
                         '-e POSTGRES_USER=user ' +
                         '-e POSTGRES_PASSWORD=password ' +
-                        '-e POSTGRES_DB=todo_db ' +
-                        '--name todo_db' // El host ahora será 'postgres'
+                        '-e POSTGRES_DB=todo_db '
+                        
                     ) { c ->
                         echo 'Esperando a que Postgres esté listo...'
                         // Damos unos segundos para que la DB inicie
