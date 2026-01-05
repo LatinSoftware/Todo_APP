@@ -13,7 +13,7 @@ pipeline {
         DATABASE_URL = "postgresql://user:password@${DB_HOST}:5432/todo_db"
         
         // Configuración DockerHub (Cambia 'tu-usuario' por el real)
-        DOCKER_IMAGE = "kaoru751/todo-app-backend"
+        DOCKER_IMAGE = "salcedoj/todo-app-backend"
         DOCKER_TAG = "${BUILD_NUMBER}"
     }
 
