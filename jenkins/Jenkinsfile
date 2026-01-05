@@ -8,7 +8,7 @@ pipeline {
 
     environment {
         PATH = "/root/.local/bin:${env.PATH}"
-        // Mantenemos el hostname coincidente con --name
+        // Esta URL debe coincidir con el nombre que le demos al contenedor (--name)
         DATABASE_URL = "postgresql://user:password@tododbtest:5432/todo_db"
     }
 
@@ -16,7 +16,7 @@ pipeline {
         stage('Setup Environment') {
             steps {
                 script {
-                    echo 'Instalando herramientas necesarias...'
+                    echo 'Configurando herramientas...'
                     sh 'apt-get update && apt-get install -y curl docker.io'
                     sh 'curl -LsSf https://astral.sh/uv/install.sh | sh'
                 }
@@ -32,33 +32,36 @@ pipeline {
         stage('Run Integration Tests') {
             steps {
                 script {
-                    // 1. Obtenemos el ID de la red del contenedor actual (Python)
-                    def network = sh(script: "docker inspect \$(hostname) -f '{{range .NetworkSettings.Networks}}{{.NetworkID}}{{end}}'", returnStdout: true).trim()
+                    // 1. Detectar la red del contenedor actual de Jenkins
+                    def networkId = sh(script: "docker inspect \$(hostname) -f '{{range .NetworkSettings.Networks}}{{.NetworkID}}{{end}}'", returnStdout: true).trim()
                     
-                    // 2. Lanzamos Postgres uniéndolo a esa red
+                    // 2. Levantar Postgres en esa misma red
                     docker.image('postgres:15-alpine').withRun(
-                        "--network ${network} " + 
+                        "--network ${networkId} " + 
+                        "--name tododbtest " +
                         "-e POSTGRES_USER=user " +
                         "-e POSTGRES_PASSWORD=password " +
-                        "-e POSTGRES_DB=todo_db " +
-                        "--name tododbtest"
+                        "-e POSTGRES_DB=todo_db"
                     ) { c ->
-                        echo 'Esperando a que Postgres esté listo...'
-                        sh 'sleep 15' // Un poco más de tiempo para seguridad
+                        echo 'Esperando a que la base de datos esté lista para recibir conexiones...'
+                        // Aumentamos a 20s porque Postgres tarda en crear los archivos internos
+                        sh 'sleep 20' 
                         
                         echo 'Ejecutando Pytest...'
-                        sh 'DATABASE_URL=$DATABASE_URL /root/.local/bin/uv run pytest'
+                        // Pasamos explícitamente la variable de entorno
+                        sh "DATABASE_URL=${env.DATABASE_URL} /root/.local/bin/uv run pytest"
                     }
                 }
             }
         }
     }
-    
+
     post {
         always {
             script {
-                // Limpieza manual por si el contenedor quedó colgado
+                // Limpieza: Borrar el contenedor de test para que no estorbe en la próxima ejecución
                 sh 'docker rm -f tododbtest || true'
+                echo 'Finalizando ejecución...'
             }
         }
     }
